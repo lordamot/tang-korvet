@@ -1,0 +1,20 @@
+Check repo ../tang-pk8000 - follow its methodology structure etc.
+Copy tools you need from there.
+
+Lets create "Корвет ПК" emulator for tang board now.
+
+Main infosource: ./infosource (it has also links.txt file)
+
+Peripherals wanted (all can be on off separately):
+- ExtROM - should use SD card "extrom" folder for contents
+- Floppy - with ability to mount KDIs from SD card
+- OPTS rom selection
+- RAM size selection (check in docs - different RAM is possible)
+- Selection of CPU block - ВМ80 or Z80+AY module
+  AY should be wired to audio output
+- COM mouse (translated from usb one of course)
+
+As usual - docs, tests, tools, prompts dir followups
+
+****
+

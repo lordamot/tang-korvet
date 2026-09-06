@@ -1,0 +1,56 @@
+<?xml version="1" encoding="UTF-8"?>
+<!DOCTYPE gowin-fpga-project>
+<Project>
+    <Template>FPGA</Template>
+    <Version>5</Version>
+    <Device name="GW2AR-18C" pn="GW2AR-LV18QN88C8/I7">gw2ar18c-000</Device>
+    <FileList>
+        <File path="src/top.v" type="file.verilog" enable="1"/>
+        <File path="src/sys_pll.v" type="file.verilog" enable="1"/>
+        <File path="src/i2s_tx.v" type="file.verilog" enable="1"/>
+        <File path="src/korvet/vm80a.v" type="file.verilog" enable="1"/>
+        <File path="src/korvet/cpu8080.v" type="file.verilog" enable="1"/>
+        <File path="src/korvet/tv80_core.v" type="file.verilog" enable="1"/>
+        <File path="src/korvet/tv80_alu.v" type="file.verilog" enable="1"/>
+        <File path="src/korvet/tv80_mcode.v" type="file.verilog" enable="1"/>
+        <File path="src/korvet/tv80_reg.v" type="file.verilog" enable="1"/>
+        <File path="src/korvet/cpuz80.v" type="file.verilog" enable="1"/>
+        <File path="src/korvet/memmap.v" type="file.verilog" enable="1"/>
+        <File path="src/korvet/membus.v" type="file.verilog" enable="1"/>
+        <File path="src/korvet/sdram.v" type="file.verilog" enable="1"/>
+        <File path="src/korvet/memcheck.v" type="file.verilog" enable="1"/>
+        <File path="src/korvet/opts_rom.v" type="file.verilog" enable="1"/>
+        <File path="src/korvet/font_rom.v" type="file.verilog" enable="1"/>
+        <File path="src/korvet/romload.v" type="file.verilog" enable="1"/>
+        <File path="src/korvet/txtram.v" type="file.verilog" enable="1"/>
+        <File path="src/korvet/video.v" type="file.verilog" enable="1"/>
+        <File path="src/korvet/ports.v" type="file.verilog" enable="1"/>
+        <File path="src/korvet/devices.v" type="file.verilog" enable="1"/>
+        <File path="src/korvet/ppi8255.v" type="file.verilog" enable="1"/>
+        <File path="src/korvet/pit8253.v" type="file.verilog" enable="1"/>
+        <File path="src/korvet/pic8259.v" type="file.verilog" enable="1"/>
+        <File path="src/korvet/i8251.v" type="file.verilog" enable="1"/>
+        <File path="src/korvet/mouse.v" type="file.verilog" enable="1"/>
+        <File path="src/korvet/fdc.v" type="file.verilog" enable="1"/>
+        <File path="src/korvet/wd1793.sv" type="file.verilog" enable="1"/>
+        <File path="src/korvet/ay.v" type="file.verilog" enable="1"/>
+        <File path="src/korvet/ym2149.sv" type="file.verilog" enable="1"/>
+        <File path="src/korvet/extrom.v" type="file.verilog" enable="1"/>
+        <File path="src/korvet/sd_arbiter.v" type="file.verilog" enable="1"/>
+        <File path="src/korvet/poke.v" type="file.verilog" enable="1"/>
+        <File path="src/hdmi/hdmi_packet.v" type="file.verilog" enable="1"/>
+        <File path="src/hdmi/hdmi_serdes.v" type="file.verilog" enable="1"/>
+        <File path="src/hdmi/hdmi_tx.v" type="file.verilog" enable="1"/>
+        <File path="src/hdmi/tmds_channel.v" type="file.verilog" enable="1"/>
+        <File path="src/mister/hid.v" type="file.verilog" enable="1"/>
+        <File path="src/mister/mcu_spi.v" type="file.verilog" enable="1"/>
+        <File path="src/mister/osd_u8g2.v" type="file.verilog" enable="1"/>
+        <File path="src/mister/sd_card.v" type="file.verilog" enable="1"/>
+        <File path="src/mister/sd_rw.v" type="file.verilog" enable="1"/>
+        <File path="src/mister/sdcmd_ctrl.v" type="file.verilog" enable="1"/>
+        <File path="src/mister/sector_dpram.v" type="file.verilog" enable="1"/>
+        <File path="src/mister/sysctrl.v" type="file.verilog" enable="1"/>
+        <File path="src/korvet.cst" type="file.cst" enable="1"/>
+        <File path="src/korvet.sdc" type="file.sdc" enable="1"/>
+    </FileList>
+</Project>

@@ -1,0 +1,42 @@
+continue
+
+****
+
+Done: the three items at the top of progress.md's "What is next" are resolved, and the tree builds, lints, simulates and meets timing. Nothing has been on a board, and nothing is committed.
+
+Already confirmed by last night's logs
+
+Items 1 and 2 had finished after progress.md was last written: the widened shadow gives "read-after-write: 0 wrong" (basic.log), and the Z80 boots and takes its interrupts in both speeds (z80p_fix.log, z80t_fix.log). progress.md records them now.
+
+The ExtROM boot (item 3) reaches CP/M's A> prompt in simulation. Getting there took four fixes:
+
+- Control went to the wrong request level. devices.v put it on IR7, the name the connector and the ExtROM's documents use. The ОПТС 2.0 tests bit 0 of the ВН59's request register after raising Control (korvet20.rom 04C0h-04CEh), and Erokhin's emulator patch raises request 0 for it. Control is IR0 now, the motor time-out stays IR7. platform.md has the reasoning.
+- A request bit did not follow its line. pic8259.v held an edge-mode request until acknowledged. The datasheet and Emu80 clear it when the line drops, so it does that now, and the floppy motor's request became a level (the one-shot's inverted output) instead of a one-clock pulse.
+- The floppy's byte reached the CPU one read late. devices.v took the ВГ93's answer on the clock fdc.v registered it, so every read returned the previous read's value. One more pipeline stage fixes it.
+- The testbench's ExtROM brain overran the 1 K FIFO. It pushed the 8 KB phase-2 loader without polling for room, and the FIFO drops what it cannot take. It credits itself from the status byte now, as the firmware always did.
+
+A claim from 5 September corrected
+
+The "boots BASIC from disk" runs were the ОПТС ROM's own BASIC, started after the floppy boot had failed on the late byte. Every one of those runs reports zero card transfers, and the banner is in the ROM at 185Bh. progress.md says so now. With the read path fixed, the floppy boot is real.
+
+What the three 11 s runs show, each with every check at 0 wrong:
+
+  ВМ80 from the floppy      CP/M-80 2.2, A>, 42 card transfers, the boot sector's bytes match the image
+  Z80 5 MHz from the floppy CP/M-80 2.2, A>, 42 card transfers, 308 interrupts taken
+  ВМ80 from the ExtROM      CP/M-80 2.2, A>, "PK8020 with FDC", 158 sectors read through the API
+
+Bitstream: Logic 44%, Register 23%, BSRAM 29/46, PLL 2/2, 0 setup and 0 hold violations, gate passed. bin/tang.fs, tang/impl/pnr/ and tang/build.tcl are that build.
+
+Files changed: tang/src/korvet/devices.v, pic8259.v, fdc.v, extrom.v (comments), tang/src/top.v, sim/tb/tb_top.v, .claude/docs/platform.md, extrom.md, progress.md, build.md, README.md (the boot order: the ОПТС looks for the ExtROM before drive A).
+
+Next per progress.md: a board. Say if you want this committed.
+
+too long command run, is not it?
+
+****
+
+(asked while the ExtROM run was going)
+
+No, it is the expected length. The ОПТС tests all 256 KB before it boots, which is nine seconds of machine time, and the simulator runs at about 9.4 ms of machine time per wall second, so an 11 s run is around 20 minutes. This one has been going 17.5 minutes and is in its last stretch.
+
+It is already worth the wait: the log shows the fix working. Phase 2 was received in full this time, the loader then sent its first API commands, and it is now reading drive A's system tracks sector by sector, 164 commands so far. I'll report the end state when it finishes.
