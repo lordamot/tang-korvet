@@ -1,0 +1,56 @@
+gzu plane seems to be shifted by 1 char placement - check and fix
+
+****
+
+Found and fixed. The text plane was one character to the right of the graphics, not the graphics off; the fix is in video.v.
+
+The defect: the finished glyph was registered (f_txt) on the tile period's last clock and the shift register took f_txt on that same clock, so it got the tile before. The three graphics bytes, latched by clock 6, were the right tile. Every line's column 0 showed the previous line's column 63 and column 63 was lost. The 5 September BASIC frame already had it: the banner and the cursor started in the second cell.
+
+The fix: the glyph is a wire and the hand-over takes it directly. Lint clean.
+
+Bitstream 10 Sep 07:45: Logic 44%, Register 23%, BSRAM 29/46, 0 setup and 0 hold violations, timing gate passed; bin/tang.fs is that build.
+
+Simulation: CP/M boot from soft/disk.kdi (the disk is CP/M, not BASIC; the typed LINE command went to the A> prompt), the banner now starts at pixel 0. A new testbench option +GZUPAT=<ms> writes a ruler into the graphics RAM (the edge pixels of every tile in plane 0, every eighth tile solid in planes 1 and 2); with it the ОПТС's "2.0", text column 8, sits exactly on graphics tile 8, and tile 0 renders at pixel 0. Text and graphics are on the same cells. Not on a board.
+
+Also noticed, not fixed: typing "LINE(8,0)" at CP/M's prompt arrived as "L(8,0)" - the testbench types about a character every 200 ms and CP/M dropped I, N, E. Worth a look at the keyboard path or the typing pace before the board.
+
+Files: tang/src/korvet/video.v, sim/tb/tb_top.v, .claude/docs/progress.md, build.md, bin/tang.fs, tang/impl/pnr/, tang/build.tcl.
+
+does monitor hang?
+
+****
+
+No, it is not hung. The simulator is at full CPU, twenty minutes in, and its output is block-buffered through the pipe, so nothing shows until it exits. My mistake in that run: the frame option counts milliseconds, not frames, so its two frames were taken at 0.5 s during the ОПТС. A second run with the frames at 10.3 s is going alongside.
+
+why you started second monitor?
+
+****
+
+Because the first run cannot produce the picture I need; it can still tell whether BASIC took the typed LINE command, so I let it finish. The second run is the same simulation with the frames at 10.3 s, where the screen with the text is.
+
+ok, wait for the frame
+
+****
+
+Waited. The text frame at 10.3 s: the "C" of "CP/M-80" occupies the first 16-pixel cell, where before the fix the first cell was empty. The ruler frames: text column 8 on graphics tile 8, tile 0 at pixel 0. Aligned.
+
+check keyboard path
+
+****
+
+The keyboard path is right; the keys were typed before CP/M was listening.
+
+Traced with two new testbench options, +KBDTRACE (every read of the keyboard page and every key from the MCU; +IOTRACE never showed the keyboard page because it is not the device page) and +CPUTRACE over the window:
+
+  9001.9 ms  L pressed (MCU code 13, row 1 col 4)
+  9017.1 ms  the BIOS scans: F87F -> 10h, then the rows down to F802 -> 10h, F880 (modifiers) -> 00; L found, stored, click
+  9017-9495  no keyboard reads at all; I, N, E pressed and released in this window
+  9448 ms    the last floppy status read (sector reads all through the window)
+  9492.8 ms  CP/M's CONIN called for the first time; it takes the L
+  9495.9 ms  scanning resumes every 20 ms; every key from here on is taken
+
+The disk's BIOS (disassembled from soft/disk.kdi, loaded at C380h+offset): the frame interrupt (IRQ4 -> DC0Ch, vector table at DFA6h) scans the matrix into a one-key buffer at E519h and skips the scan while the buffer is full; CONIN at E3BCh empties it. Without +SDFAST the card model answers in a millisecond and CP/M was still reading the disk at 9.0 s, so the L waited in the buffer and the three keys typed meanwhile were never looked at. The ОПТС 2.0's own scanner (ROM 0B17h, called through 007Ch, every 2 frames, repeat delay 13 scans - constants at ROM 021Dh, copied to F71Dh) would not have missed them, but CP/M's BIOS replaces it.
+
+Every read of F800h in the trace returned the right row and bit for the key held and 00 after the release; the modifier row read 00. Nothing to fix in hid.v, ports.v or top.v. Type after the prompt (+TYPE_MS past 9500 without +SDFAST); a one-key buffer that ignores the keyboard until it is read is the machine's own behaviour.
+
+Files: sim/tb/tb_top.v (+KBDTRACE), .claude/docs/progress.md (settled item 9), build.md.

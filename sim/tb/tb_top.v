@@ -10,6 +10,7 @@
 //   +NOFASTBOOT   do not shortcut the 207 ms power-on reset counter
 //   +CPUTRACE     every opcode fetch: address and opcode
 //   +IOTRACE      every access to the device and register pages
+//   +KBDTRACE     every read of the keyboard page while tracing, and every key from the MCU
 //   +ZTRACE       the Z80 wrapper's bus at every enable and every phase 9
 //   +TRACE_INT=<n> trace (as above) from the n-th interrupt taken, 1 ms, then stop
 //   +MEMTRACE     every request on the SDRAM's CPU port
@@ -25,6 +26,7 @@
 //   +AY           the AY module on ('y' 1)
 //   +GZU48        one graphics page ('m' 1)
 //   +TYPE_STR=<text>  type the text ('_' for a space) and Enter at +TYPE_MS=<n> (default 2500)
+//   +GZUPAT=<ms>      at n ms a ruler into the graphics RAM: plane 0 edges of every tile, tiles 0,8,.. solid in planes 1-2
 //   +KDIA= +KDIB= +KDIC= +KDID= +OPTS=<file>   images (sim/stubs/sd_card_sim.v)
 //   +SDFAST       the card answers in microseconds, not a millisecond
 //   +EXTROM       the ExtROM controller on ('x' 1), with the stand-in
@@ -544,7 +546,7 @@ module tb_top;
     //--------------------------------------------------------------------
     // Run
     //--------------------------------------------------------------------
-    integer run_ms, type_ms, cpu_n;
+    integer run_ms, type_ms, cpu_n, gzupat_ms, gzi;
     reg [8*255:1] type_str;
     reg [1023:0]  stage1_file;
     integer tries;
@@ -611,6 +613,19 @@ module tb_top;
             uut.system_cpu !== cpu_n[1:0] || uut.system_mouse !== 1'b1) begin
             $display("[tb] *** OSD VALUES WRONG after the defaults");
             cfg_errs = cfg_errs + 1;
+        end
+
+        // +GZUPAT=<ms>: at that time the first and the last pixel of every
+        // tile of plane 0, page 0, are lit straight into the SDRAM model -
+        // a ruler for the character grid, to see the text plane and the
+        // graphics on the same cells - and every eighth tile is solid in
+        // planes 1 and 2, so that a shift of the graphics by a whole tile
+        // shows too (video.v's hand-over, 10 Sep 2026).
+        if ($value$plusargs("GZUPAT=%d", gzupat_ms)) begin
+            #(gzupat_ms * 64'd1000000);
+            for (gzi = 0; gzi < 256 * 64; gzi = gzi + 1)
+                ram.mem[21'h20000 + gzi] = (gzi[2:0] == 3'd0) ? 32'h00FFFF81 : 32'h00000081;
+            $display("[tb] %0t graphics ruler written into plane 0", $time);
         end
 
         if ($value$plusargs("TYPE_STR=%s", type_str)) begin
@@ -702,8 +717,8 @@ module tb_top;
     integer sr_writes = 0, nc_writes = 0, lut_writes = 0, txt_writes = 0, gzu_writes = 0;
     reg [7:0] sr_first = 8'd0; time sr_first_t = 0;
     reg     first_seen = 1'b0;
-    reg [15:0] m1_adr, dev_adr;
-    reg        m1_pend = 1'b0, dev_pend = 1'b0;
+    reg [15:0] m1_adr, dev_adr, kbd_adr;
+    reg        m1_pend = 1'b0, dev_pend = 1'b0, kbd_pend = 1'b0;
 
     always @(posedge uut.clk) begin
         if (uut.mem_rd && uut.cpu_m1_now) begin
@@ -724,6 +739,15 @@ module tb_top;
             inta_count = inta_count + 1;
             if (inta_count <= 3) $display("[tb] %0t interrupt %0d taken", $time, inta_count);
         end
+        // +KBDTRACE: every read of the keyboard page (not the device
+        // page, so IOTRACE never shows it) and every key from the MCU
+        if (uut.mem_rd && uut.rd_kbd) begin kbd_adr = uut.cpu_a_now; kbd_pend = 1'b1; end
+        if (kbd_pend && uut.tphase == 4'd15) begin
+            kbd_pend = 1'b0;
+            if ($test$plusargs("KBDTRACE") && tracing) $display("[kbd] %0t rd %04x -> %02x", $time, kbd_adr, uut.cpu_din);
+        end
+        if (uut.kbd_stb && $test$plusargs("KBDTRACE"))
+            $display("[kbd] %0t key %02x (%s %0d)", $time, uut.kbd_byte, uut.kbd_byte[7] ? "up" : "down", uut.kbd_byte[6:0]);
         if (uut.mem_rd && uut.rd_dev) begin
             dev_rd = dev_rd + 1;
             dev_adr = uut.cpu_a_now; dev_pend = 1'b1;

@@ -17,7 +17,8 @@ found and fixed four defects by simulation (below) and rewrote what the
 What each check shows:
 
 - `make lint` - clean but for the usual warnings.
-- `make bitstream` (6 Sep 11:54, after the fixes below) - Logic 44%,
+- `make bitstream` (10 Sep 07:45, after defect 8 below; the 6 Sep build
+  had the same figures) - Logic 44%,
   Register 23%, BSRAM 29/46 (64%), PLL 2/2; clk40 0 setup and 0 hold
   violations, the timing gate passes, `bin/tang.fs` is that build.
   (The first build, 5 Sep 18:32, had the HDMI PLL's `FCLKIN` still at
@@ -153,6 +154,43 @@ not show a disk boot.
    from the status's room byte now, as `mnano/extrom.c` always did.  The
    FIFO's drop-when-full is unchanged and a flag for it on the Debug page
    would be a reasonable addition.
+8. **Fixed (10 Sep): the text plane sat one character right of the
+   graphics.**  `video.v` registered the finished glyph (`f_txt`) on
+   the tile period's last clock and handed it to the shift register on
+   that same clock, so the shift register took the tile BEFORE; the
+   three graphics bytes, latched by clock 6, were the right tile.  Every
+   line's column 0 showed the previous line's column 63 and column 63
+   was lost - the 5 Sep frames already had it (`frame_0518.png`: BASIC's
+   banner and cursor start at the second cell).  The glyph is a wire
+   now and the hand-over takes it directly; the fetch is otherwise
+   unchanged.  Seen fixed in simulation (`align3.log`, `align4.log`,
+   frames 0432 and 0073): CP/M's banner starts in the first cell, and
+   with the testbench's new `+GZUPAT=` ruler in the graphics RAM the
+   ОПТС's "2.0" - text column 8 - sits exactly on marked graphics tile
+   8, marked tile 0 at pixel 0.  Bitstream 10 Sep 07:45: Logic 44%,
+   Register 23%, BSRAM 29/46, 0 setup and 0 hold violations, gate
+   passed; `bin/tang.fs` is that build.  Not on a board.
+9. **Settled (10 Sep): keys typed into CP/M were lost - the keyboard
+   path is right, the typing was early.**  Typing "LINE" at 9.0 s in
+   a floppy boot without `+SDFAST` gave "L": I, N and E vanished.
+   Traced with the testbench's new `+KBDTRACE` (the keyboard page is
+   not the device page, so `+IOTRACE` never showed it) and `+CPUTRACE`
+   (`kbd.log`, `kbd2.log`): every read of F800h returned the right
+   row and bit for the key held and 00 after its release; the modifier
+   row read 00.  The disk's BIOS scans the matrix from the frame
+   interrupt (its vector table at DFA6h, IRQ4 to DC0Ch) into a
+   one-key buffer (E519h) and does not scan while the buffer is full;
+   CONIN (E3BCh) empties it.  Without `+SDFAST` CP/M was still reading
+   the disk at 9.0 s (sector reads until 9.45 s) and called CONIN for
+   the first time at 9.49 s, so the L waited in the buffer and the
+   three keys pressed and released meanwhile were never looked at.
+   Every key after 9.49 s was taken.  The ОПТС 2.0's own scanner
+   (ROM 0B17h, entry 007Ch) runs every 2 frames with a 13-scan repeat
+   delay (its constants at ROM 021Dh, copied to F71Dh) and would not
+   have missed them; CP/M's BIOS replaces it.  So: type after the
+   prompt (`+TYPE_MS` past 9500 without `+SDFAST`), and a one-key
+   buffer that ignores the keyboard until it is read is the machine's
+   own behaviour, not the FPGA's.
 
 ## Not built yet
 

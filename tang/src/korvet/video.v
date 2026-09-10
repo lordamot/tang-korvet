@@ -116,17 +116,21 @@ assign txt_adr  = {mline[7:4], wide ? {tile[5:1], 1'b0} : tile};
 reg [7:0] f_sym  = 8'd0;
 reg       f_attr = 1'b0;
 reg [7:0] f_font = 8'd0;
-reg [7:0] f_txt  = 8'd0;
 reg [23:0] f_gzu = 24'd0;
 reg        f_odd = 1'b0;
 
 assign font_adr = {font_sel, f_sym, mline[3:0]};
 
 // the glyph as it will be shown: inverted by the attribute, and in the
-// wide mode one half of it doubled
+// wide mode one half of it doubled.  Combinational from registers that
+// are still by clock 6, and taken by the shift register at the hand-over
+// itself: a register written at clock 31 and read by the hand-over on
+// the same clock handed the shift register the tile BEFORE, and the text
+// sat one character right of the graphics (found 10 Sep 2026).
 wire [7:0] glyph = f_font ^ {8{f_attr}};
 wire [7:0] half  = f_odd ? {glyph[3:0], 4'd0} : glyph;
 wire [7:0] wide8 = {half[7], half[7], half[6], half[6], half[5], half[5], half[4], half[4]};
+wire [7:0] f_txt = wide ? wide8 : glyph;
 
 always @(posedge clk) begin
     vid_req <= 1'b0;
@@ -135,7 +139,6 @@ always @(posedge clk) begin
         if (tclk == 5'd2)  begin f_sym <= txt_sym; f_attr <= txt_attr; f_odd <= tile[0]; end
         if (tclk == 5'd6)  f_font <= font_data;         // the pROM answered
         if (vid_ack)       f_gzu  <= vid_rdata[23:0];
-        if (tclk == 5'd31) f_txt  <= wide ? wide8 : glyph;
     end
 end
 

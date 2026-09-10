@@ -95,7 +95,18 @@ make frames RUN_MS=1500 PPM_FROM=1400 PPM_MAX=2 SIMARGS="+TEXTDUMP"
 make frames RUN_MS=10000 PPM_FROM=9800 PPM_MAX=2 SIMARGS="+TEXTDUMP +KDIA=soft/disk.kdi +SDFAST"
 ```
 
-`+TYPE_STR=` types any text at the prompt (`_` for a space), `+CPU=1`
+`+TYPE_STR=` types any text at the prompt (`_` for a space; note
+`PPM_FROM` is milliseconds, not a frame number).  Type after the
+prompt is really there: CP/M's BIOS keeps ONE key and does not scan
+while it is unread, and without `+SDFAST` the floppy boot reaches its
+first console read only at about 9.5 s, so keys typed before that are
+lost after the first (progress.md, defect 9).  `+KBDTRACE` shows every
+read of the keyboard page while tracing and every key from the MCU -
+`+IOTRACE` does not, the keyboard page is not the device page.
+`+GZUPAT=<ms>` writes
+a ruler into the graphics RAM at that time (the edge pixels of every
+tile in plane 0, every eighth tile solid in planes 1 and 2) so that a
+frame shows the text and the graphics on the same cells, `+CPU=1`
 or `2` runs the Z80, `+EXTROM +STAGE2=... +XA=...` boots the ExtROM way
 with the testbench as the controller (`extrom.md`), `+PPM_EVERY=` thins
 the frames.  `tools/ppm2png.py` turns a frame into a PNG.
