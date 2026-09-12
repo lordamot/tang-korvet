@@ -113,6 +113,11 @@ SDC); `mcu_spi.v` takes it through a handshake into the 40.5 MHz domain.
 in `README.md`.  UKNC Nano's `.claude/docs/mcu.md` has the byte-level
 protocol of each target; this core adds SYS CMD 8.
 
+**SYS command 9** (Sep 2026): followed by A5h, it makes the core pulse
+RECONFIG_N and the FPGA reload from the flash address in its header -
+the core switch of `../tang-ultima`, whose firmware is the one that
+sends it.  This tree's firmware does not.
+
 ## What was removed from PK8000 Nano's firmware (Sep 2026)
 
 `pk8000.h`, `pk8000_tokens.h`, `bas.c/h` ("Run .bas" and its test), the

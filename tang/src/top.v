@@ -79,7 +79,10 @@ module top(
 
     // the MCU link, stock MiSTeryNano wiring: an external BL616 / M0S
     // Dock on 42/41/56/54/51 - 0 miso, 1 mosi, 2 csn, 3 sclk, 4 irqn
-    inout  [ 4:0] m0s
+    inout  [ 4:0] m0s,
+
+    // RECONFIG_N, pin 9: driven low by SYS command 9 to reload the FPGA
+    output        reconfig_n
 );
 
 assign O_sdram_cke = 1'b1;
@@ -438,6 +441,7 @@ wire [7:0]  xr_rdata, xr_wdata, xr_rom_adr, xr_rx_count, xr_tx_free;
 wire        xr_ctrl_fell;
 wire [255:0] dbg_bus;
 
+wire sys_reconfig;   // SYS command 9: reload the FPGA (see the MultiBoot block below)
 sysctrl sctl1 (
     .clk(clk), .reset(mist_rst),
     .data_in_strobe(mcu_sys_strobe), .data_in_start(mcu_start), .data_in(mcu_dout), .data_out(mcu_sys_din),
@@ -454,8 +458,26 @@ sysctrl sctl1 (
     .xr_rd(xr_rd), .xr_rdata(xr_rdata), .xr_wr(xr_wr), .xr_wdata(xr_wdata), .xr_flush(xr_flush),
     .xr_rom_wr(xr_rom_wr), .xr_rom_adr(xr_rom_adr),
     .xr_rx_count(xr_rx_count), .xr_tx_free(xr_tx_free),
-    .xr_flags({4'd0, xr_ctrl_fell, control, p3_mode2, system_extrom})
+    .xr_flags({4'd0, xr_ctrl_fell, control, p3_mode2, system_extrom}),
+    .reconfig(sys_reconfig)
 );
+
+//------------------------------------------------------------------------
+// MultiBoot (tang-ultima): the MCU's SYS command 9 (sysctrl.v) pulses
+// RECONFIG_N - pin 9, a GPIO output here (-use_reconfign_as_gpio) - and
+// the FPGA reloads the image whose SPI flash address this bitstream's
+// header names (Gowin MultiBoot, UG290 7.5.4; gowin_tcl.py's
+// --multiboot-addr).  A standalone build names 0, which is itself.  The
+// pin must read high from configuration on, so the counter starts at 0
+// and the pin is low only while it counts down - 256 clocks, far over
+// the 25 ns the FPGA asks for.  Nothing of the running design survives.
+//------------------------------------------------------------------------
+reg [7:0] reconfig_cnt = 8'd0;
+always @(posedge clk) begin
+    if(sys_reconfig)            reconfig_cnt <= 8'hff;
+    else if(reconfig_cnt != 0)  reconfig_cnt <= reconfig_cnt - 8'd1;
+end
+assign reconfig_n = (reconfig_cnt == 8'd0);
 
 poke pk (
     .clk(clk), .reset(mist_rst),
