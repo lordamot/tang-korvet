@@ -99,7 +99,6 @@ module top(
 
 assign O_sdram_cke = 1'b1;
 assign PA_EN       = 1'b1;
-assign uart_tx     = 1'b1;
 
 //------------------------------------------------------------------------
 // Clock
@@ -456,6 +455,9 @@ wire [255:0] dbg_bus;
 wire sys_reconfig;   // SYS command 9: reload the FPGA (see the MultiBoot block below)
 wire       flash_stb, flash_first;   // SYS command 10 -> flashwr.v
 wire [7:0] flash_din, flash_dout;
+wire       cl_stb, cl_first;         // SYS command 11 -> coreload.v
+wire [7:0] cl_din, cl_dout;
+wire       cl_active, cl_tx;
 sysctrl sctl1 (
     .clk(clk), .reset(mist_rst),
     .data_in_strobe(mcu_sys_strobe), .data_in_start(mcu_start), .data_in(mcu_dout), .data_out(mcu_sys_din),
@@ -475,7 +477,8 @@ sysctrl sctl1 (
     .xr_flags({4'd0, xr_ctrl_fell, control, p3_mode2, system_extrom}),
     .reconfig(sys_reconfig),
     .flash_stb(flash_stb), .flash_first(flash_first),
-    .flash_din(flash_din), .flash_dout(flash_dout)
+    .flash_din(flash_din), .flash_dout(flash_dout),
+    .cl_stb(cl_stb), .cl_first(cl_first), .cl_din(cl_din), .cl_dout(cl_dout)
 );
 
 //------------------------------------------------------------------------
@@ -492,6 +495,21 @@ flashwr fwr1(
     .mspi_clk(mspi_clk), .mspi_cs_n(mspi_cs_n),
     .mspi_do(mspi_do),   .mspi_di(mspi_di)
 );
+
+//------------------------------------------------------------------------
+// The UART to the board's own BL616 (tang-ultima, coreload.v): SYS
+// command 11.  Pin 69 is this FPGA's TX into that chip, 70 its TX back.
+// Its stage 2 firmware takes a core over this UART into its own flash
+// and loads it into this FPGA's SRAM over the JTAG it owns - the core
+// switch without a power cycle.  The pins were idle in this core.
+//------------------------------------------------------------------------
+coreload #(.CLK_HZ(40500000), .BAUD(2000000)) cl1(
+    .clk(clk), .reset(mist_rst),
+    .stb(cl_stb), .first(cl_first), .din(cl_din), .dout(cl_dout),
+    .active(cl_active), .tx(cl_tx), .rx(uart_rx)
+);
+assign uart_tx = cl_tx;   // idles high; the pin was unused in this core
+
 
 //------------------------------------------------------------------------
 // MultiBoot (tang-ultima): the MCU's SYS command 9 (sysctrl.v) pulses
