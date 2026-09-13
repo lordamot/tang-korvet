@@ -140,22 +140,30 @@ The board as PK8000 Nano wires it, unchanged - `README.md` has the
 table.  The SDRAM is in the package and its pins are the tool's, all 32
 data lines used here.  The USB-C serial (pin 69) is driven idle.
 
-### RECONFIG_N, pin 9 (Sep 2026, for ../tang-ultima)
+### The configuration flash, and RECONFIG_N (Sep 2026, for ../tang-ultima)
 
-`top.v` has an output `reconfig_n` on pin 9, the FPGA's RECONFIG_N,
-made a GPIO by `"RECONFIG_N": true` in the process config
-(`gowin_tcl.py` -> `-use_reconfign_as_gpio 1`).  It is high from
-configuration and goes low for 256 clocks when `sysctrl.v` sees SYS
-command 9 followed by A5h; the FPGA then reloads itself from the flash
-address in this bitstream's header (Gowin MultiBoot, UG290 7.5.4) - 0,
-this image itself, for a build in this tree, and the next machine's slot
-for a build by `../tang-ultima`, which passes `gowin_tcl.py
---multiboot-addr`.  Nothing in this design depends on it; the firmware
-in this tree never sends CMD 9.  `../tang-ultima/.claude/docs/multiboot.md`
-has the whole account.
+`top.v` has an output `reconfig_n` and four more for the FPGA's MSPI pins.
+Both exist for `../tang-ultima`, which puts three machines on one board;
+nothing in this design depends on either, and the firmware in this tree
+sends neither SYS command.
 
-## What is not there
+**The flash, MCLK 59, MCS_N 60, MO 61, MI 62.**  `mister/flashwr.v` owns
+them - a 512-byte buffer and one transaction, "shift TX bytes out, read RX
+back, CS held" - driven by **SYS command 10**.  They are the FPGA's own
+configuration bus until DONE and user logic's afterwards, which
+`"MSPI" : true` in the process config asks for (`gowin_tcl.py` ->
+`-use_mspi_as_gpio 1`); UG290 4.1.2 table 4-2 says so and the board
+confirms it - a bitstream built this way still boots from the flash it then
+takes over.  `../tang-ultima` uses it to write the next machine to flash
+address 0, which is what power-up always loads.  Verified on a board, 13
+September 2026.
 
-The tape input and output as files, the printer (its data and strobe
-go nowhere), the network ВВ51's line, a digital joystick on the ВВ55
-#3's port B - and everything in `progress.md`.
+**`reconfig_n`, pin 48, open drain.**  Pulses low for 256 clocks when
+`sysctrl.v` sees SYS command 9 followed by A5h.  It is on pin 48 and not on
+pin 9 because **reusing pin 9 as a GPIO cuts the pad from the
+configuration controller**: driven from there the pulse is generated and no
+configuration is attempted.  Pin 9 is therefore left a RECONFIG_N input,
+and a wire from pin 48 to test pad TP1 - the only other point on pin 9's
+net - would make the pulse work.  Without that wire this output does
+nothing.  `../tang-ultima/.claude/docs/progress.md` has the evidence and
+`coreswitch.md` the design that does not need it.
